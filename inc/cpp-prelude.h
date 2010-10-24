@@ -15,6 +15,8 @@ public:
   operator volatile T&() { return *(volatile T*) addr; }
   Mem<T, addr>& operator=(T x) { *(volatile T*) addr = x; return *this; }
 
+  volatile T* operator&() { return (volatile T*)addr; }
+
   // instance versions could be written as *this |= _BV(bit), but
   // having the static can allow derivative templates to write
   // Mem<X,Y>::set_bit as well Mem<X,Y> mem; mem.set_bit
