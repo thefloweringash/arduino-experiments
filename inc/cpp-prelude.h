@@ -34,13 +34,13 @@ class Mem8 : public Mem<uint8_t, addr> {
   using Mem<uint8_t, addr>::operator=;
 };
 
-// Mem16 = Mem uint8_t
+// Mem16 = Mem uint16_t
 template <unsigned int addr>
 class Mem16 : public Mem<uint16_t, addr> {
   using Mem<uint16_t, addr>::operator=;
 };
 
-// Mem32 = Mem uint8_t
+// Mem32 = Mem uint32_t
 template <unsigned int addr>
 class Mem32 : public Mem<uint32_t, addr> {
   using Mem<uint32_t, addr>::operator=;
