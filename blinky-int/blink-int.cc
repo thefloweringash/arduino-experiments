@@ -2,30 +2,7 @@
 #include <avr/interrupt.h>
 
 #include "cpp-prelude.h"
-
-// Simple digital output
-
-template <typename io_reg_t,
-	  typename ddr_reg_t,
-	  unsigned char bit>
-class DigitalPin {
-
-public:
-  inline void setDDR()   { ddr_reg_t::template set_bit<bit>(); }
-  inline void clearDDR() { ddr_reg_t::template clear_bit<bit>(); }
-
-  inline void set()      { io_reg_t::template set_bit<bit>(); }
-  inline void clear()    { io_reg_t::template clear_bit<bit>(); }
-
-  inline void set(bool value) {
-    if (value) {
-      set();
-    }
-    else {
-      clear();
-    }
-  }
-};
+#include "cpp-prelude/digitalpin.h"
 
 // Program
 
