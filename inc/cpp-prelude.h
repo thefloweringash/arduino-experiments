@@ -26,6 +26,9 @@ public:
 
   template <unsigned char bit>
   static inline void clear_bit() { *(volatile T*) addr &= ~_BV(bit); }
+
+  template <unsigned char bit>
+  static inline type get_bit() { return *(volatile T*)addr & _BV(bit); }
 };
 
 // Curried aliases
