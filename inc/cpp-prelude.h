@@ -11,6 +11,8 @@ private:
   static const T check_can_assign_numeric = 0;
 
 public:
+  typedef T type;
+
   // C++ number handling is awesome
   operator volatile T&() { return *(volatile T*) addr; }
   Mem<T, addr>& operator=(T x) { *(volatile T*) addr = x; return *this; }
@@ -29,6 +31,10 @@ public:
 
   template <unsigned char bit>
   static inline type get_bit() { return *(volatile T*)addr & _BV(bit); }
+
+  static inline void set(type x) { *(volatile T*)addr = x; }
+  static inline type get() { return *(volatile T*)addr; }
+
 };
 
 // Curried aliases
