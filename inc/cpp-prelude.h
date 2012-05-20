@@ -41,33 +41,23 @@ public:
 
 // Mem8 = Mem uint8_t
 template <unsigned int addr>
-class Mem8 : public Mem<uint8_t, addr> {
-  using Mem<uint8_t, addr>::operator=;
-};
+using Mem8 = Mem<uint8_t, addr>;
 
 // Mem16 = Mem uint16_t
 template <unsigned int addr>
-class Mem16 : public Mem<uint16_t, addr> {
-  using Mem<uint16_t, addr>::operator=;
-};
+using Mem16 = Mem<uint16_t, addr>;
 
 // Mem32 = Mem uint32_t
 template <unsigned int addr>
-class Mem32 : public Mem<uint32_t, addr> {
-  using Mem<uint32_t, addr>::operator=;
-};
+using Mem32 = Mem<uint32_t, addr>;
 
 // IO8 = Mem uint8_t . (+__SFR_OFFSET)
 template <unsigned int addr>
-class IO8 : public Mem<uint8_t, addr+__SFR_OFFSET> {
-  using Mem<uint8_t, addr+__SFR_OFFSET>::operator=;
-};
+using IO8 = Mem8<addr + __SFR_OFFSET>;
 
 // IO16 = Mem uint16_t . (+__SFR_OFFSET)
 template <unsigned int addr>
-class IO16 : public Mem<uint16_t, addr+__SFR_OFFSET> {
-  using Mem<uint16_t, addr+__SFR_OFFSET>::operator=;
-};
+using IO16 = Mem16<addr + __SFR_OFFSET>;
 
 // Extern promises there's an instance, but we require no instance as
 // all methods are inline

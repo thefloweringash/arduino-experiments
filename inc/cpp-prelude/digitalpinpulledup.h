@@ -1,10 +1,10 @@
-#ifndef OPENCOLLECTORPIN_H
-#define OPENCOLLECTORPIN_H
+#ifndef DIGITALPINPULLEDUP_H
+#define DIGITALPINPULLEDUP_H
 
 template <typename i_reg_t,
 	  typename ddr_reg_t,
 	  unsigned char bit>
-class OpenCollectorPin {
+class DigitalPinPulledUp {
 public:
   static inline bool get() { return i_reg_t::template get_bit<bit>() != 0;  }
 

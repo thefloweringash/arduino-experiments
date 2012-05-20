@@ -135,6 +135,7 @@ endif
 
 ARDUINO_LIB_PATH  = $(ARDUINO_DIR)/hardware/libraries
 ARDUINO_CORE_PATH = $(ARDUINO_DIR)/hardware/arduino/cores/arduino
+ARDUINO_VARIANT_PATH = $(ARDUINO_DIR)/hardware/arduino/variants/standard
 
 endif
 
@@ -184,13 +185,13 @@ TARGETS    = $(OBJDIR)/$(TARGET).*
 DEP_FILE   = $(OBJDIR)/depends.mk
 
 # Names of executables
-CC      = $(AVR_TOOLS_PATH)/avr-gcc
-CXX     = $(AVR_TOOLS_PATH)/avr-g++
-OBJCOPY = $(AVR_TOOLS_PATH)/avr-objcopy
-OBJDUMP = $(AVR_TOOLS_PATH)/avr-objdump
-AR      = $(AVR_TOOLS_PATH)/avr-ar
-SIZE    = $(AVR_TOOLS_PATH)/avr-size
-NM      = $(AVR_TOOLS_PATH)/avr-nm
+CC      = avr-gcc
+CXX     = avr-g++
+OBJCOPY = avr-objcopy
+OBJDUMP = avr-objdump
+AR      = avr-ar
+SIZE    = avr-size
+NM      = avr-nm
 REMOVE  = rm -f
 MV      = mv -f
 CAT     = cat
@@ -203,11 +204,12 @@ SYS_OBJS      = $(wildcard $(patsubst %,%/*.o,$(SYS_LIBS)))
 
 CPPFLAGS      = -mmcu=$(MCU) -DF_CPU=$(F_CPU) \
 			-I. -I$(ARDUINO_CORE_PATH) \
+			-I $(ARDUINO_VARIANT_PATH) \
 			$(SYS_INCLUDES) -g -Os -w -Wall \
 			-ffunction-sections -fdata-sections \
 			-I../inc
 CFLAGS        = -std=gnu99 -I../inc
-CXXFLAGS      = -fno-exceptions
+CXXFLAGS      = -fno-exceptions -std=c++11
 ASFLAGS       = -mmcu=$(MCU) -I. -x assembler-with-cpp
 LDFLAGS       = -mmcu=$(MCU) -lm -Wl,--gc-sections -Os
 
@@ -271,10 +273,10 @@ $(OBJDIR)/%.d: $(OBJDIR)/%.cpp
 
 # core files
 $(OBJDIR)/%.o: $(ARDUINO_CORE_PATH)/%.c
-	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+	$(CC) -D__PROG_TYPES_COMPAT__ -c $(CPPFLAGS) $(CFLAGS) $< -o $@
 
 $(OBJDIR)/%.o: $(ARDUINO_CORE_PATH)/%.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+	$(CXX) -D__PROG_TYPES_COMPAT__ -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
 
 # various object conversions
 $(OBJDIR)/%.hex: $(OBJDIR)/%.elf
@@ -304,7 +306,7 @@ AVRDUDE_COM_OPTS += -C $(AVRDUDE_CONF)
 endif
 
 ifndef AVRDUDE_ARD_PROGRAMMER
-AVRDUDE_ARD_PROGRAMMER = stk500v1
+AVRDUDE_ARD_PROGRAMMER = arduino
 endif
 
 ifndef AVRDUDE_ARD_BAUDRATE

@@ -3,7 +3,7 @@
 
 #include "cpp-prelude.h"
 #include "cpp-prelude/digitalpin.h"
-#include "cpp-prelude/opencollectorpin.h"
+#include "cpp-prelude/digitalpinpulledup.h"
 #include "cpp-prelude/ps2keyboard.h"
 
 #include "timing.h"
@@ -25,8 +25,8 @@ bool ledval = true;
 char cmd_buffer[256] = {0};
 int cmd_head = 0;
 
-typedef OpenCollectorPin<PIND_t, DDRD_t, PORTD3> kbd_data_pin;
-typedef OpenCollectorPin<PIND_t, DDRD_t, PORTD2> kbd_clock_pin;
+typedef DigitalPinPulledUp<PIND_t, DDRD_t, PORTD3> kbd_data_pin;
+typedef DigitalPinPulledUp<PIND_t, DDRD_t, PORTD2> kbd_clock_pin;
 
 PS2Keyboard<kbd_data_pin, kbd_clock_pin> keyboard;
 
