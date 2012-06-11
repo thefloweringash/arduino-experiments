@@ -13,6 +13,7 @@ NO_CORE = 1
 # Excuse this hack too
 CORE_OBJS = 	$(OBJDIR)/HardwareSerial.o \
 		$(OBJDIR)/Print.o \
-		$(OBJDIR)/wiring_analog.o
+		$(OBJDIR)/wiring_analog.o \
+		$(OBJDIR)/timing.o
 
 include ../Arduino.mk
