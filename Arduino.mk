@@ -31,6 +31,7 @@
 #         0.4  25.v.2010   M J Oldfield
 #                          - tweaked reset target on Philip Hands' advice
 #
+#         ...              Hacked to bits by lorne@cons.org.nz
 ########################################################################
 #
 # STANDARD ARDUINO WORKFLOW
@@ -40,14 +41,14 @@
 #
 # For example:
 #
-#       ARDUINO_DIR  = /Applications/arduino-0013
+#       ARDUINO_DIR  := /Applications/arduino-0013
 #
-#       TARGET       = CLItest
-#       ARDUINO_LIBS = LiquidCrystal
+#       TARGET       := CLItest
+#       ARDUINO_LIBS := LiquidCrystal
 #
-#       MCU          = atmega168
-#       F_CPU        = 16000000
-#       ARDUINO_PORT = /dev/cu.usb*
+#       MCU          := atmega168
+#       F_CPU        := 16000000
+#       ARDUINO_PORT := /dev/cu.usb*
 #
 #       include /usr/local/share/Arduino.mk
 #
@@ -77,19 +78,8 @@
 # Besides make upload you can also
 #   make            - no upload
 #   make clean      - remove all our dependencies
-#   make depends    - update dependencies
 #   make reset      - reset the Arduino by tickling DTR on the serial port
 #   make raw_upload - upload without first resetting
-#
-########################################################################
-#
-# ARDUINO WITH OTHER TOOLS
-#
-# If the tools aren't in the Arduino distribution, then you need to 
-# specify their location:
-#
-#    AVR_TOOLS_PATH = /usr/bin
-#    AVRDUDE_CONF   = /etc/avrdude/avrdude.conf
 #
 ########################################################################
 #
@@ -98,14 +88,14 @@
 # You need to specify some details of your ISP programmer and might
 # also need to specify the fuse values:
 #
-#     ISP_PROG	   = -c stk500v2
-#     ISP_PORT     = /dev/ttyACM0
+#     ISP_PROG	   := -c stk500v2
+#     ISP_PORT     := /dev/ttyACM0
 #     
-#     ISP_LOCK_FUSE_PRE  = 0x3f
-#     ISP_LOCK_FUSE_POST = 0xcf
-#     ISP_HIGH_FUSE      = 0xdf
-#     ISP_LOW_FUSE       = 0xff
-#     ISP_EXT_FUSE       = 0x01
+#     ISP_LOCK_FUSE_PRE  := 0x3f
+#     ISP_LOCK_FUSE_POST := 0xcf
+#     ISP_HIGH_FUSE      := 0xdf
+#     ISP_LOW_FUSE       := 0xff
+#     ISP_EXT_FUSE       := 0x01
 #
 # I think the fuses here are fine for uploading to the ATmega168
 # without bootloader.
@@ -119,164 +109,112 @@
 # Some paths
 #
 
-ifneq (ARDUINO_DIR,)
+ifneq ($(ARDUINO_DIR),)
 
-ifndef AVR_TOOLS_PATH
-AVR_TOOLS_PATH    = $(ARDUINO_DIR)/hardware/tools/avr/bin
-endif
-
-ifndef ARDUINO_ETC_PATH
-ARDUINO_ETC_PATH  = $(ARDUINO_DIR)/hardware/tools/avr/etc
-endif
-
-ifndef AVRDUDE_CONF
-AVRDUDE_CONF     = $(ARDUINO_ETC_PATH)/avrdude.conf
-endif
-
-ARDUINO_LIB_PATH  = $(ARDUINO_DIR)/hardware/libraries
-ARDUINO_CORE_PATH = $(ARDUINO_DIR)/hardware/arduino/cores/arduino
-ARDUINO_VARIANT_PATH = $(ARDUINO_DIR)/hardware/arduino/variants/standard
+ARDUINO_LIB_PATH  := $(ARDUINO_DIR)/libraries
+ARDUINO_CORE_PATH := $(ARDUINO_DIR)/hardware/arduino/cores/arduino
+ARDUINO_VARIANT_PATH := $(ARDUINO_DIR)/hardware/arduino/variants/standard
 
 endif
 
 # Everything gets built in here
-OBJDIR  	  = build-cli
+OBJDIR  	  := obj
 
 ########################################################################
 # Local sources
 #
-LOCAL_C_SRCS    = $(wildcard *.c)
-LOCAL_CPP_SRCS  = $(wildcard *.cpp)
-LOCAL_CC_SRCS   = $(wildcard *.cc)
-LOCAL_PDE_SRCS  = $(wildcard *.pde)
-LOCAL_AS_SRCS   = $(wildcard *.S)
-LOCAL_OBJ_FILES = $(LOCAL_C_SRCS:.c=.o) $(LOCAL_CPP_SRCS:.cpp=.o) \
-		$(LOCAL_CC_SRCS:.cc=.o) $(LOCAL_PDE_SRCS:.pde=.o) \
-		$(LOCAL_AS_SRCS:.S=.o)
-LOCAL_OBJS      = $(patsubst %,$(OBJDIR)/%,$(LOCAL_OBJ_FILES))
+ifeq ($(LOCAL_SRCS),)
+LOCAL_SRCS    := $(wildcard *.c) $(wildcard *.cpp) $(wildcard *.cc) $(wildcard *.pde) $(wildcard *.S)
+endif
+LOCAL_OBJ_FILES := $(addsuffix .o,$(basename $(LOCAL_SRCS)))
+LOCAL_OBJS      := $(addprefix $(OBJDIR)/,$(LOCAL_OBJ_FILES))
 
-# Dependency files
-DEPS            = $(LOCAL_OBJS:.o=.d)
 
 # core sources
 ifeq ($(strip $(NO_CORE)),)
 ifdef ARDUINO_CORE_PATH
-CORE_C_SRCS     = $(wildcard $(ARDUINO_CORE_PATH)/*.c)
-CORE_CPP_SRCS   = $(wildcard $(ARDUINO_CORE_PATH)/*.cpp)
-CORE_OBJ_FILES  = $(CORE_C_SRCS:.c=.o) $(CORE_CPP_SRCS:.cpp=.o)
-CORE_OBJS       = $(patsubst $(ARDUINO_CORE_PATH)/%,  \
+CORE_SRCS     := $(wildcard $(ARDUINO_CORE_PATH)/*.c) $(wildcard $(ARDUINO_CORE_PATH)/*.cpp)
+endif
+else
+CORE_SRCS     := $(addprefix $(ARDUINO_CORE_PATH)/,$(EXTRA_CORE_SRCS))
+endif
+CORE_OBJ_FILES  := $(addsuffix .o,$(basename $(CORE_SRCS)))
+CORE_OBJS       := $(patsubst $(ARDUINO_DIR)/%,  \
 			$(OBJDIR)/%,$(CORE_OBJ_FILES))
-endif
-endif
+
+# The name of the main targets
+TARGET_HEX := $(OBJDIR)/$(TARGET).hex
+TARGET_ELF := $(OBJDIR)/$(TARGET).elf
+TARGETS    := $(OBJDIR)/$(TARGET).*
+
+# Names of executables
+CC      := avr-gcc
+CXX     := avr-g++
+OBJCOPY := avr-objcopy
+OBJDUMP := avr-objdump
+AR      := avr-ar
+SIZE    := avr-size
+NM      := avr-nm
+REMOVE  := rm -f
+MV      := mv -f
+CAT     := cat
+ECHO    := echo
+
+# General arguments
+SYS_LIBS      := $(addprefix $(ARDUINO_LIB_PATH)/,$(ARDUINO_LIBS))
+SYS_INCLUDES  := $(addprefix -I,$(SYS_LIBS))
+SYS_SRCS      := $(wildcard $(SYS_LIBS)/*.c) $(wildcard $(SYS_LIBS)/*.cpp)
+SYS_OBJ_FILES := $(addsuffix .o,$(basename $(SYS_SRCS)))
+SYS_OBJS      :=  $(patsubst $(ARDUINO_DIR)/%,  \
+			$(OBJDIR)/%,$(SYS_OBJ_FILES))
+
 
 # all the objects!
-OBJS            = $(LOCAL_OBJS) $(CORE_OBJS)
+OBJS            := $(LOCAL_OBJS) $(CORE_OBJS) $(SYS_OBJS)
+
+# Dependency files
+DEPS            := $(OBJS:.o=.d)
+
+ALL_OBJDIR_SENTINELS := $(addsuffix /.made,$(dir $(OBJS)))
+
+INTERNAL_FLAGS      := -mmcu=$(MCU) -DF_CPU=$(F_CPU) \
+                        -I. -I$(ARDUINO_CORE_PATH) \
+                        -I $(ARDUINO_VARIANT_PATH) \
+                        $(SYS_INCLUDES) -g -Os -w -Wall \
+                        -ffunction-sections -fdata-sections \
+                        -I../inc \
+                        -D__PROG_TYPES_COMPAT__
+INTERNAL_CFLAGS        := -std=gnu99 -I../inc
+INTERNAL_CXXFLAGS      := -fno-exceptions -std=c++11
+INTERNAL_ASFLAGS       := -mmcu=$(MCU) -I. -x assembler-with-cpp
+INTERNAL_LDFLAGS       := -mmcu=$(MCU) -lm -Wl,--gc-sections -Os
+
+# Expand and pick the first port
+ARD_PORT      := $(firstword $(wildcard $(ARDUINO_PORT)))
+
+VPATH := $(VPATH) $(ARDUINO_DIR)
 
 ########################################################################
 # Rules for making stuff
 #
 
-# The name of the main targets
-TARGET_HEX = $(OBJDIR)/$(TARGET).hex
-TARGET_ELF = $(OBJDIR)/$(TARGET).elf
-TARGETS    = $(OBJDIR)/$(TARGET).*
-
-# A list of dependencies
-DEP_FILE   = $(OBJDIR)/depends.mk
-
-# Names of executables
-CC      = avr-gcc
-CXX     = avr-g++
-OBJCOPY = avr-objcopy
-OBJDUMP = avr-objdump
-AR      = avr-ar
-SIZE    = avr-size
-NM      = avr-nm
-REMOVE  = rm -f
-MV      = mv -f
-CAT     = cat
-ECHO    = echo
-
-# General arguments
-SYS_LIBS      = $(patsubst %,$(ARDUINO_LIB_PATH)/%,$(ARDUINO_LIBS))
-SYS_INCLUDES  = $(patsubst %,-I%,$(SYS_LIBS))
-SYS_OBJS      = $(wildcard $(patsubst %,%/*.o,$(SYS_LIBS)))
-
-CPPFLAGS      = -mmcu=$(MCU) -DF_CPU=$(F_CPU) \
-			-I. -I$(ARDUINO_CORE_PATH) \
-			-I $(ARDUINO_VARIANT_PATH) \
-			$(SYS_INCLUDES) -g -Os -w -Wall \
-			-ffunction-sections -fdata-sections \
-			-I../inc
-CFLAGS        = -std=gnu99 -I../inc
-CXXFLAGS      = -fno-exceptions -std=c++11
-ASFLAGS       = -mmcu=$(MCU) -I. -x assembler-with-cpp
-LDFLAGS       = -mmcu=$(MCU) -lm -Wl,--gc-sections -Os
-
-# Rules for making a CPP file from the main sketch (.cpe)
-PDEHEADER     = \\\#include \"WProgram.h\"
-
-# Expand and pick the first port
-ARD_PORT      = $(firstword $(wildcard $(ARDUINO_PORT)))
-
-# Implicit rules for building everything (needed to get everything in
-# the right directory)
-#
-# Rather than mess around with VPATH there are quasi-duplicate rules
-# here for building e.g. a system C++ file and a local C++
-# file. Besides making things simpler now, this would also make it
-# easy to change the build options in future
-
-# normal local sources
-# .o rules are for objects, .d for dependency tracking
-# there seems to be an awful lot of duplication here!!!
 $(OBJDIR)/%.o: %.c
-	$(CC) -c $(CPPFLAGS) $(CFLAGS) $< -o $@
+	$(CC) -MMD -c $(INTERNAL_FLAGS) $(INTERNAL_CFLAGS) $(CFLAGS) $< -o $@
 
 $(OBJDIR)/%.o: %.cc
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+	$(CXX) -MMD -c $(INTERNAL_FLAGS) $(INTERNAL_CXXFLAGS) $(CXXFLAGS) $< -o $@
 
 $(OBJDIR)/%.o: %.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+	$(CXX) -MMD -c $(INTERNAL_FLAGS) $(INTERNAL_CXXFLAGS) $(CXXFLAGS) $< -o $@
 
 $(OBJDIR)/%.o: %.S
-	$(CC) -c $(CPPFLAGS) $(ASFLAGS) $< -o $@
+	$(CC) -MMD -c $(INTERNAL_FLAGS) $(INTERNAL_ASFLAGS) $(ASFLAGS) $< -o $@
 
 $(OBJDIR)/%.o: %.s
-	$(CC) -c $(CPPFLAGS) $(ASFLAGS) $< -o $@
+	$(CC) -MMD -c $(INTERNAL_FLAGS) $(INTERNAL_LDFLAGS) $(ASFLAGS) $< -o $@
 
-$(OBJDIR)/%.d: %.c
-	$(CC) -MM $(CPPFLAGS) $(CFLAGS) $< -MF $@ -MT $(@:.d=.o)
 
-$(OBJDIR)/%.d: %.cc
-	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) $< -MF $@ -MT $(@:.d=.o)
-
-$(OBJDIR)/%.d: %.cpp
-	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) $< -MF $@ -MT $(@:.d=.o)
-
-$(OBJDIR)/%.d: %.S
-	$(CC) -MM $(CPPFLAGS) $(ASFLAGS) $< -MF $@ -MT $(@:.d=.o)
-
-$(OBJDIR)/%.d: %.s
-	$(CC) -MM $(CPPFLAGS) $(ASFLAGS) $< -MF $@ -MT $(@:.d=.o)
-
-# the pde -> cpp -> o file
-$(OBJDIR)/%.cpp: %.pde
-	$(ECHO) $(PDEHEADER) > $@
-	$(CAT)  $< >> $@
-
-$(OBJDIR)/%.o: $(OBJDIR)/%.cpp
-	$(CXX) -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
-
-$(OBJDIR)/%.d: $(OBJDIR)/%.cpp
-	$(CXX) -MM $(CPPFLAGS) $(CXXFLAGS) $< -MF $@ -MT $(@:.d=.o)
-
-# core files
-$(OBJDIR)/%.o: $(ARDUINO_CORE_PATH)/%.c
-	$(CC) -D__PROG_TYPES_COMPAT__ -c $(CPPFLAGS) $(CFLAGS) $< -o $@
-
-$(OBJDIR)/%.o: $(ARDUINO_CORE_PATH)/%.cpp
-	$(CXX) -D__PROG_TYPES_COMPAT__ -c $(CPPFLAGS) $(CXXFLAGS) $< -o $@
+# We won't support building with .pde/.ino files, too hard.
 
 # various object conversions
 $(OBJDIR)/%.hex: $(OBJDIR)/%.elf
@@ -296,50 +234,48 @@ $(OBJDIR)/%.sym: $(OBJDIR)/%.elf
 #
 # Avrdude
 #
-ifndef AVRDUDE
-AVRDUDE          = $(AVR_TOOLS_PATH)/avrdude
-endif
+AVRDUDE := avrdude
 
-AVRDUDE_COM_OPTS = -q -V -p $(MCU)
+AVRDUDE_COM_OPTS := -q -V -p $(MCU)
 ifdef AVRDUDE_CONF
 AVRDUDE_COM_OPTS += -C $(AVRDUDE_CONF)
 endif
 
 ifndef AVRDUDE_ARD_PROGRAMMER
-AVRDUDE_ARD_PROGRAMMER = arduino
+AVRDUDE_ARD_PROGRAMMER := arduino
 endif
 
 ifndef AVRDUDE_ARD_BAUDRATE
-AVRDUDE_ARD_BAUDRATE   = 115200
+AVRDUDE_ARD_BAUDRATE   := 115200
 endif
 
-AVRDUDE_ARD_OPTS = -c $(AVRDUDE_ARD_PROGRAMMER) -b $(AVRDUDE_ARD_BAUDRATE) -P $(ARD_PORT)
+AVRDUDE_ARD_OPTS := -c $(AVRDUDE_ARD_PROGRAMMER) -b $(AVRDUDE_ARD_BAUDRATE) -P $(ARD_PORT)
 
 ifndef ISP_LOCK_FUSE_PRE
-ISP_LOCK_FUSE_PRE  = 0x3f
+ISP_LOCK_FUSE_PRE  := 0x3f
 endif
 
 ifndef ISP_LOCK_FUSE_POST
-ISP_LOCK_FUSE_POST = 0xcf
+ISP_LOCK_FUSE_POST := 0xcf
 endif
 
 ifndef ISP_HIGH_FUSE
-ISP_HIGH_FUSE      = 0xdf
+ISP_HIGH_FUSE      := 0xdf
 endif
 
 ifndef ISP_LOW_FUSE
-ISP_LOW_FUSE       = 0xff
+ISP_LOW_FUSE       := 0xff
 endif
 
 ifndef ISP_EXT_FUSE
-ISP_EXT_FUSE       = 0x01
+ISP_EXT_FUSE       := 0x01
 endif
 
 ifndef ISP_PROG
-ISP_PROG	   = -c stk500v2
+ISP_PROG	   := -c stk500v2
 endif
 
-AVRDUDE_ISP_OPTS = -P $(ISP_PORT) $(ISP_PROG)
+AVRDUDE_ISP_OPTS := -P $(ISP_PORT) $(ISP_PROG)
 
 
 ########################################################################
@@ -347,16 +283,16 @@ AVRDUDE_ISP_OPTS = -P $(ISP_PORT) $(ISP_PROG)
 # Explicit targets start here
 #
 
-all: 		$(OBJDIR) $(TARGET_HEX)
+all: 		$(TARGET_HEX)
 
-$(OBJDIR):
-		mkdir $(OBJDIR)
+$(OBJS): | $(ALL_OBJDIR_SENTINELS)
+
+%/.made:
+	mkdir -p $$(dirname $@)
+	touch $@
 
 $(TARGET_ELF): 	$(OBJS)
-		$(CC) $(LDFLAGS) -o $@ $(OBJS) $(SYS_OBJS)
-
-$(DEP_FILE):	$(OBJDIR) $(DEPS)
-		cat $(DEPS) > $(DEP_FILE)
+		$(CC) $(INTERNAL_LDFLAGS) $(LDFLAGS) -o $@ $(OBJS)
 
 upload:		reset raw_upload
 
@@ -387,11 +323,8 @@ ispload:	$(TARGET_HEX)
 			-U lock:w:$(ISP_LOCK_FUSE_POST):m
 
 clean:
-		$(REMOVE) $(OBJS) $(TARGETS) $(DEP_FILE) $(DEPS)
-
-depends:	$(DEPS)
-		cat $(DEPS) > $(DEP_FILE)
+		[ -d $(OBJDIR) ] && rm -r $(OBJDIR) || true
 
 .PHONY:	all clean depends upload raw_upload reset
 
-include $(DEP_FILE)
+-include $(DEPS)
