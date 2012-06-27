@@ -11,9 +11,8 @@ ARDUINO_PORT = /dev/cu.usb*
 NO_CORE = 1
 
 # Excuse this hack too
-CORE_OBJS = 	$(OBJDIR)/HardwareSerial.o \
-		$(OBJDIR)/Print.o \
-		$(OBJDIR)/timing.o \
-		$(OBJDIR)/parity.o
+EXTRA_CORE_SRCS = HardwareSerial.o  Print.o
+LOCAL_SRCS := keyboard.cc common/parity.c common/timing.c
+VPATH := ..
 
 include ../Arduino.mk

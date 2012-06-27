@@ -35,10 +35,6 @@ class Dallas1Wire {
   static constexpr char readSlotOffset = 10;
 
 public:
-  static void init() {
-    pin::init();
-  }
-
   static int reset() {
     pin::pull_low();
     delayMicroseconds(480);
@@ -128,8 +124,6 @@ int main() {
   Serial.println("Hello");
 
   led.setDDR();
-  temperature_sensor.init();
-  // // sensor_pin_t::init_onmcu_pullup();
 
   sei();
 

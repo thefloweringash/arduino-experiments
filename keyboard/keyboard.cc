@@ -1,13 +1,14 @@
 #include <avr/io.h>
 #include <avr/interrupt.h>
 
+#include <HardwareSerial.h>
+
 #include "cpp-prelude.h"
 #include "cpp-prelude/digitalpin.h"
 #include "cpp-prelude/digitalpinpulledup.h"
 #include "cpp-prelude/ps2keyboard.h"
 
 #include "timing.h"
-#include "HardwareSerial.h"
 
 // Simple digital output
 
