@@ -163,12 +163,12 @@ ECHO    := echo
 # General arguments
 SYS_LIBS      := $(addprefix $(ARDUINO_LIB_PATH)/,$(ARDUINO_LIBS))
 SYS_INCLUDES  := $(addprefix -I,$(SYS_LIBS))
-SYS_SRCS      := $(wildcard $(SYS_LIBS)/*.c) $(wildcard $(SYS_LIBS)/*.cpp)
+SYS_SRCS      := \
+	$(wildcard $(addsuffix /*.c,$(SYS_LIBS))) \
+	$(wildcard $(addsuffix /*.cpp,$(SYS_LIBS)))
 SYS_OBJ_FILES := $(addsuffix .o,$(basename $(SYS_SRCS)))
 SYS_OBJS      :=  $(patsubst $(ARDUINO_DIR)/%,  \
 			$(OBJDIR)/%,$(SYS_OBJ_FILES))
-
-
 # all the objects!
 OBJS            := $(LOCAL_OBJS) $(CORE_OBJS) $(SYS_OBJS)
 
