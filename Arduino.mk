@@ -186,7 +186,8 @@ INTERNAL_FLAGS      := -mmcu=$(MCU) -DF_CPU=$(F_CPU) \
                         $(SYS_INCLUDES) -g -Os -w -Wall \
                         -ffunction-sections -fdata-sections \
                         -I../inc \
-                        -D__PROG_TYPES_COMPAT__
+                        -D__PROG_TYPES_COMPAT__ \
+                        -DARDUINO=100
 INTERNAL_CFLAGS        := -std=gnu99 -I../inc
 INTERNAL_CXXFLAGS      := -fno-exceptions -std=c++11
 INTERNAL_ASFLAGS       := -mmcu=$(MCU) -I. -x assembler-with-cpp
