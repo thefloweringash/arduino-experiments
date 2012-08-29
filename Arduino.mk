@@ -113,7 +113,10 @@ ifneq ($(ARDUINO_DIR),)
 
 ARDUINO_LIB_PATH  := $(ARDUINO_DIR)/libraries
 ARDUINO_CORE_PATH := $(ARDUINO_DIR)/hardware/arduino/cores/arduino
+
+ifeq ($(ARDUINO_VARIANT_PATH),)
 ARDUINO_VARIANT_PATH := $(ARDUINO_DIR)/hardware/arduino/variants/standard
+endif
 
 endif
 
