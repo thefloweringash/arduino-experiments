@@ -120,6 +120,10 @@ endif
 
 endif
 
+ifeq ($(CPP_PRELUDE_DIR),)
+CPP_PRELUDE_DIR := ..
+endif
+
 # Everything gets built in here
 OBJDIR  	  := obj
 
@@ -148,6 +152,7 @@ CORE_OBJS       := $(patsubst $(ARDUINO_DIR)/%,  \
 # The name of the main targets
 TARGET_HEX := $(OBJDIR)/$(TARGET).hex
 TARGET_ELF := $(OBJDIR)/$(TARGET).elf
+TARGET_MAP := $(OBJDIR)/$(TARGET).map
 TARGETS    := $(OBJDIR)/$(TARGET).*
 
 # Names of executables
@@ -185,10 +190,10 @@ INTERNAL_FLAGS      := -mmcu=$(MCU) -DF_CPU=$(F_CPU) \
                         -I $(ARDUINO_VARIANT_PATH) \
                         $(SYS_INCLUDES) -g -Os -w -Wall \
                         -ffunction-sections -fdata-sections \
-                        -I../inc \
+                        -I$(CPP_PRELUDE_DIR)/inc \
                         -D__PROG_TYPES_COMPAT__ \
                         -DARDUINO=100
-INTERNAL_CFLAGS        := -std=gnu99 -I../inc
+INTERNAL_CFLAGS        := -std=gnu99
 INTERNAL_CXXFLAGS      := -fno-exceptions -std=c++11
 INTERNAL_ASFLAGS       := -mmcu=$(MCU) -I. -x assembler-with-cpp
 INTERNAL_LDFLAGS       := -mmcu=$(MCU) -lm -Wl,--gc-sections -Os
@@ -223,6 +228,7 @@ $(OBJDIR)/%.o: %.s
 # various object conversions
 $(OBJDIR)/%.hex: $(OBJDIR)/%.elf
 	$(OBJCOPY) -O ihex -R .eeprom $< $@
+	avr-size $@
 
 $(OBJDIR)/%.eep: $(OBJDIR)/%.elf
 	-$(OBJCOPY) -j .eeprom --set-section-flags=.eeprom="alloc,load" \
@@ -296,7 +302,11 @@ $(OBJS): | $(ALL_OBJDIR_SENTINELS)
 	touch $@
 
 $(TARGET_ELF): 	$(OBJS)
-		$(CC) $(INTERNAL_LDFLAGS) $(LDFLAGS) -o $@ $(OBJS)
+		$(CC) -Wl,-Map -Wl,$(TARGET_MAP) $(INTERNAL_LDFLAGS) $(LDFLAGS) -o $@ $(OBJS)
+		avr-size $@
+
+# upload, raw_upload, reset and ispload are inherited from earlier
+# revisions and preserved in case someone finds them useful.
 
 upload:		reset raw_upload
 
@@ -325,6 +335,23 @@ ispload:	$(TARGET_HEX)
 			-U flash:w:$(TARGET_HEX):i
 		$(AVRDUDE) $(AVRDUDE_COM_OPTS) $(AVRDUDE_ISP_OPTS) \
 			-U lock:w:$(ISP_LOCK_FUSE_POST):m
+
+
+# flash, fuse are simple options that should be familiar to vusb
+# users.
+
+fuse:
+	@if [ -z "$(FUSE_H)" ] || [ -z "$(FUSE_L)" ]; then \
+		[ -z "$(FUSE_H)" ] && echo "FUSE_H not set"; \
+		[ -z "$(FUSE_L)" ] && echo "FUSE_L not set"; \
+		exit 1; \
+	fi
+	$(AVRDUDE) $(AVRDUDE_OPTS) \
+		-U hfuse:w:$(FUSE_H):m \
+		-U lfuse:w:$(FUSE_L):m
+
+flash: $(TARGET_HEX)
+	$(AVRDUDE) $(AVRDUDE_OPTS) -U flash:w:$(TARGET_HEX):i
 
 clean:
 		[ -d $(OBJDIR) ] && rm -r $(OBJDIR) || true
