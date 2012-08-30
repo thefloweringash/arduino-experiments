@@ -64,6 +64,8 @@ using IO16 = Mem16<addr + __SFR_OFFSET>;
 
 #if defined(_AVR_IOM328P_H_)
 #  include "cpp-prelude/iom328p.h"
+#elif defined(_AVR_IOTNX5_H_)
+#  include "cpp-prelude/iotnx5.h"
 #else
 #  error No prelude file for target processor
 #endif
