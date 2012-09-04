@@ -1,0 +1,14 @@
+Name:		usbrf
+Version:	0.0
+Synopsis:	libusb based driver for the usbrf project
+Author:		Andrew Childs
+Maintainer:	Andrew Childs <lorne@cons.org.nz>
+
+Build-type:	Simple
+Build-depends:	base, usb, text, mtl, MaybeT, bytestring, binary
+
+Exposed-modules:      System.USB.USBRF, System.USB.VUSB.Matcher
+
+Executable:	usbrf-cli
+Main-is:	CLI.hs
+ghc-options:	-threaded

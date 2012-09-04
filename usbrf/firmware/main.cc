@@ -22,38 +22,22 @@ extern "C" {
 
 #include "requests.h"       /* The custom request numbers we use */
 
-// #include "cpp-prelude.h"
+#include "cpp-prelude.h"
 
-// borrow my previously written arduino library
 #include <RemoteTransmitter.h>
+#include <RemoteReceiver.h>
 
-class RepeatingTransmitter {
-    uint8_t mTimes;
-    uint32_t mCode;
-    RemoteTransmitter mTx;
-
+template <typename i_reg_t,
+	  unsigned char bit>
+class DigitalInput {
 public:
-    RepeatingTransmitter(uint8_t pin)
-	: mTimes(0)
-	, mTx(pin)
-    {}
-    void begin() {
-	mTx.begin();
-    }
-    void step() {
-	if (mTimes) {
-	    mTx.sendOnce(mCode);
-	    mTimes--;
-	}
-    }
-    void send(uint32_t code) {
-	mTimes = 4;
-	mCode = code;
-	mTx.sendOnce(mCode);
+    static inline bool get() {
+	return i_reg_t::template get_bit<bit>() != 0;
     }
 };
-RepeatingTransmitter rtx(0);
 
+RemoteTransmitter tx(0);
+DigitalInput<PINB_t, 4> rxPin;
 
 /* ------------------------------------------------------------------------- */
 /* ----------------------------- USB interface ----------------------------- */
@@ -78,13 +62,20 @@ usbMsgLen_t usbFunctionSetup(uchar data[8])
 	// enough space for our entire 32-bit code, it's just extra
 	// hassle.
 	uint32_t remoteCode = (((uint32_t) rq->wValue.word) << 16) | rq->wIndex.word;
-	rtx.send(remoteCode);
+	tx.send(remoteCode);
     }
     
     return 0;   /* default for not implemented requests: return no data back to host */
 }
 
 /* ------------------------------------------------------------------------- */
+
+template <typename T>
+static void send_interrupt(const T val) {
+    static T txdata;
+    txdata = val;
+    usbSetInterrupt((unsigned char*) &txdata, sizeof(txdata));
+}
 
 int __attribute__((noreturn)) main(void)
 {
@@ -94,6 +85,7 @@ uchar   i;
     /* Even if you don't use the watchdog, turn it off here. On newer devices,
      * the status of the watchdog (on/off, period) is PRESERVED OVER RESET!
      */
+
     /* RESET status: all port bits are inputs without pull-up.
      * That's the way we need D+ and D-. Therefore we don't need any
      * additional hardware initialization.
@@ -109,13 +101,38 @@ uchar   i;
     }
     usbDeviceConnect();
     sei();
+    tx.begin();
+
+    RemoteReceiver::start();
+    init(); // wiring init
+
     DBG1(0x01, 0, 0);       /* debug output: main loop starts */
-    rtx.begin();
+
+    static unsigned long last_ping;
+    last_ping = -1;
+
     for(;;){                /* main event loop */
         DBG1(0x02, 0, 0);   /* debug output: main loop iterates */
         wdt_reset();
         usbPoll();
-	rtx.step();
+
+	if (RemoteReceiver::dataReady()) {
+	    if (usbInterruptIsReady()) {
+		send_interrupt<uint32_t>(RemoteReceiver::getData());
+	    }
+	}
+	else {
+	    bool last = 0;
+	    for (unsigned long block_end = millis() + 100; millis() < block_end;) {
+		bool current  = rxPin.get();
+		if (last != current) {
+		    RemoteReceiver::interrupt();
+		    if (RemoteReceiver::dataReady())
+			break;
+		    last = current;
+		}
+	    }
+	}
     }
 }
 

@@ -3,17 +3,18 @@ ARDUINO_VARIANT_PATH := $(ARDUINO_DIR)/hardware/attiny/variants/tiny8
 ARDUINO_LIBS := RemoteReceiver RemoteTransmitter
 
 LOCAL_SRCS := main.cc calibration.c \
-	usbdrv/usbdrv.c usbdrv/usbdrvasm.S usbdrv/oddebug.c
+	usbdrv/usbdrv.c usbdrv/usbdrvasm.S usbdrv/oddebug.c \
+	wiring.c
 
-EXTRA_CORE_SRCS := wiring_digital.c
+EXTRA_CORE_SRCS :=  wiring_digital.c
 
 TARGET = usbrf
 MCU = attiny85
 F_CPU = 16500000
 NO_CORE=1
 
-CFLAGS   := -Iusbdrv
-CXXFLAGS := -Iusbdrv
+CFLAGS   := -Iusbdrv -DREMOTE_RECEIVER_USE_ATTACH_INTERRUPT=0
+CXXFLAGS := -Iusbdrv -DREMOTE_RECEIVER_USE_ATTACH_INTERRUPT=0
 
 FUSE_L  := 0xe1
 FUSE_H  := 0xdd
