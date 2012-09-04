@@ -1,0 +1,9 @@
+[submodule "libs/RemoteReceiver"]
+	path = libs/RemoteReceiver
+	url = git://github.com/thefloweringash/RemoteReceiver
+[submodule "libs/RemoteTransmitter"]
+	path = libs/RemoteTransmitter
+	url = git://github.com/thefloweringash/arduino-RemoteTransmitter
+[submodule "libs/SerialCommandProcessor"]
+	path = libs/SerialCommandProcessor
+	url = git://github.com/thefloweringash/arduino-SerialCommandProcessor

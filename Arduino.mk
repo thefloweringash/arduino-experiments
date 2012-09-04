@@ -111,7 +111,11 @@
 
 ifneq ($(ARDUINO_DIR),)
 
+ifeq ($(ARDUINO_LIB_PATH),)
 ARDUINO_LIB_PATH  := $(ARDUINO_DIR)/libraries
+ARDUINO_LIB_BASE  := $(ARDUINO_DIR)
+endif
+
 ARDUINO_CORE_PATH := $(ARDUINO_DIR)/hardware/arduino/cores/arduino
 
 ifeq ($(ARDUINO_VARIANT_PATH),)
@@ -175,8 +179,8 @@ SYS_SRCS      := \
 	$(wildcard $(addsuffix /*.c,$(SYS_LIBS))) \
 	$(wildcard $(addsuffix /*.cpp,$(SYS_LIBS)))
 SYS_OBJ_FILES := $(addsuffix .o,$(basename $(SYS_SRCS)))
-SYS_OBJS      :=  $(patsubst $(ARDUINO_DIR)/%,  \
-			$(OBJDIR)/%,$(SYS_OBJ_FILES))
+SYS_OBJS      :=  $(addprefix $(OBJDIR)/, \
+			$(patsubst $(ARDUINO_LIB_BASE)/%,%,$(SYS_OBJ_FILES)))
 # all the objects!
 OBJS            := $(LOCAL_OBJS) $(CORE_OBJS) $(SYS_OBJS)
 
