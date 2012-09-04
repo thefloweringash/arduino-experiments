@@ -2,6 +2,8 @@ ARDUINO_DIR := $(HOME)/Applications/Arduino.app/Contents/Resources/Java
 ARDUINO_VARIANT_PATH := $(ARDUINO_DIR)/hardware/attiny/variants/tiny8
 ARDUINO_LIBS := RemoteReceiver RemoteTransmitter
 
+ARDUINO_LIB_PATH := libs
+
 LOCAL_SRCS := main.cc calibration.c \
 	usbdrv/usbdrv.c usbdrv/usbdrvasm.S usbdrv/oddebug.c \
 	wiring.c
