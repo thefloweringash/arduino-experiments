@@ -5,9 +5,20 @@ void Scheduler::init(ThreadBase **t, int count) {
     mThreads = t;
 }
 
+bool Scheduler::isRunnable(ThreadBase& t) {
+    switch (t.state) {
+    case ThreadBase::NEW:
+	return true;
+    case ThreadBase::SLEEPING:
+	return millis() >= t.stateData.sleepEndMillis;
+    case ThreadBase::BLOCKED:
+	return false;
+    }
+}
+
 void Scheduler::run() {
     uint8_t currentThread = mCurrentThread;
-    while (!mThreads[currentThread]->runnable()) {
+    while (!isRunnable(*mThreads[currentThread])) {
 	currentThread = (currentThread + 1) % mThreadsCount;
 
 	if (currentThread == mCurrentThread)
@@ -18,16 +29,16 @@ void Scheduler::run() {
 
     ThreadBase& thread = *mThreads[currentThread];
 
-    if (!thread.mSetUp) {
+    if (thread.state == ThreadBase::NEW) {
 	setupThread(thread, currentThread);
+	thread.state = ThreadBase::READY;
+    }
+    else if (thread.state == ThreadBase::SLEEPING) {
+	thread.state = ThreadBase::READY;
     }
 
     if (setjmp(mSchedulerJmpbuf) == 0) {
-	if (thread.mSleeping) {
-	    thread.mSleeping = false;
-	}
-
-	longjmp(thread.mJmpBuf, currentThread);
+	longjmp(thread.jmpBuf, currentThread);
     }
     else {
 	mCurrentThread = (mCurrentThread + 1) % mThreadsCount;
@@ -35,9 +46,9 @@ void Scheduler::run() {
 }
 
 void Scheduler::setupThread(ThreadBase& t, uint8_t id) {
-    setjmp(t.mJmpBuf);
+    setjmp(t.jmpBuf);
 
-    jmp_buf_contents& buf = *reinterpret_cast<jmp_buf_contents*>(t.mJmpBuf);
+    jmp_buf_contents& buf = *reinterpret_cast<jmp_buf_contents*>(t.jmpBuf);
     buf.frame_pointer = 0;
     buf.return_address = reinterpret_cast<uint16_t>(&threadRunner);
 
@@ -57,21 +68,19 @@ void Scheduler::setupThread(ThreadBase& t, uint8_t id) {
     stackTop -= padding + sizeof(int);
     *reinterpret_cast<int*>(stackTop + padding) = id;
     buf.stack_pointer = reinterpret_cast<uint16_t>(stackTop);
-
-    t.mSetUp = true;
 }
 
 void Scheduler::yield() {
     ThreadBase& thread = *mThreads[mCurrentThread];
-    if (setjmp(thread.mJmpBuf) == 0) {
+    if (setjmp(thread.jmpBuf) == 0) {
 	longjmp(mSchedulerJmpbuf, mCurrentThread);
     }
 }
 
 void Scheduler::sleep(int ms) {
     ThreadBase& t = *mThreads[mCurrentThread];
-    t.mSleeping = true;
-    t.mSleepEndMillis = millis() + ms;
+    t.state = ThreadBase::SLEEPING;
+    t.stateData.sleepEndMillis = millis() + ms;
     yield();
 }
 

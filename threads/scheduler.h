@@ -20,14 +20,19 @@ static_assert(sizeof(jmp_buf_contents) == sizeof(jmp_buf),
 	      "jmp_buf_contents matches jmp_buf in size");
 
 class ThreadBase {
-    bool mSetUp;
-    bool mSleeping;
-    long mSleepEndMillis;
-    jmp_buf mJmpBuf;
+    enum State {
+	NEW,
+	SLEEPING,
+	BLOCKED,
+	READY
+    };
 
-    inline bool runnable() {
-	return !mSleeping || millis() > mSleepEndMillis;
-    }
+    State state;
+    union {
+	long sleepEndMillis;
+    } stateData;
+
+     jmp_buf jmpBuf;
 
     virtual uint8_t *getStack();
 
@@ -35,8 +40,7 @@ class ThreadBase {
 
 public:
     ThreadBase()
-	: mSleeping(false)
-	, mSetUp(false)
+	: state(NEW)
     {}
 
     virtual void run() = 0;
@@ -62,7 +66,7 @@ class Scheduler {
     static Scheduler *gScheduler;
 
     void setupThread(ThreadBase& t, uint8_t id);
-
+    bool isRunnable(ThreadBase& t);
 public:
     Scheduler() {
 	gScheduler = this;
