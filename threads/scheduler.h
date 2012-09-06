@@ -34,7 +34,8 @@ class ThreadBase {
 
      jmp_buf jmpBuf;
 
-    virtual uint8_t *getStack();
+    virtual uint8_t *getStackTop();
+    virtual uint8_t *getStackBottom();
 
     friend class Scheduler;
 
@@ -51,8 +52,12 @@ template <size_t stackSize>
 public:
     uint8_t mStack[stackSize];
 
-    virtual uint8_t* getStack() {
+    virtual uint8_t* getStackTop() {
 	return &mStack[stackSize];
+    }
+
+    virtual uint8_t* getStackBottom() {
+	return &mStack[0];
     }
 };
 
@@ -77,6 +82,10 @@ public:
 
     void yield();
     void sleep(int ms);
+
+#ifdef SCHEDULER_REPORT_STACK_USAGE
+    void reportStackUsage();
+#endif
 
     static void threadRunner(int dummy, ...);
 };

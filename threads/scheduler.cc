@@ -52,7 +52,10 @@ void Scheduler::setupThread(ThreadBase& t, uint8_t id) {
     buf.frame_pointer = 0;
     buf.return_address = reinterpret_cast<uint16_t>(&threadRunner);
 
-    uint8_t *stackTop = t.getStack();
+    uint8_t *stackTop = t.getStackTop();
+    uint8_t *stackBottom = t.getStackBottom();
+
+    memset(stackBottom, 'Z', stackTop - stackBottom);
 
     // I can't find any description of the calling convention. I'll
     // look harder later, but for now, we look and see what
@@ -97,3 +100,31 @@ void Scheduler::threadRunner(int dummy, ...) {
 
     // Thread has terminated. Not currently gracefully handled.
 }
+
+#ifdef SCHEDULER_REPORT_STACK_USAGE
+static uint8_t *findEndOfSentinel(uint8_t *p) {
+    while (*p == 'Z') {
+	p++;
+    }
+    return p;
+}
+
+void Scheduler::reportStackUsage() {
+    for (int i = 0; i < mThreadsCount; i++) {
+	ThreadBase& t = *mThreads[i];
+	uint8_t *stackBottom = t.getStackBottom();
+	uint8_t *stackTop = t.getStackTop();
+	Serial.print("Thread[");
+	Serial.print(i);
+	Serial.print("] stackBottom=");
+	Serial.print((intptr_t) stackBottom);
+	Serial.print(" stackTop=");
+	Serial.print((intptr_t)stackTop);
+	Serial.print(" usage=");
+	Serial.print((intptr_t) (stackTop - findEndOfSentinel(stackBottom)));
+	Serial.print(" total=");
+	Serial.print((intptr_t) (stackTop - stackBottom));
+	Serial.println();
+    }
+}
+#endif

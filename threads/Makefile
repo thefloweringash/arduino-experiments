@@ -1,8 +1,6 @@
 ARDUINO_DIR=$(HOME)/Applications/Arduino.app/Contents/Resources/Java
 ARDUINO_VARIANT_PATH := $(ARDUINO_DIR)/hardware/attiny/variants/tiny8
 
-NO_CORE=1
-EXTRA_CORE_SRCS := wiring.c wiring_digital.c
 
 TARGET = threads
 MCU := attiny85

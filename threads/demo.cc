@@ -9,7 +9,7 @@
 Scheduler sched;
 Scheduler *Scheduler::gScheduler(0);
 
-class BlinkyThread : public Thread<32> {
+class BlinkyThread : public Thread<40> {
     int mPin;
     int mSleepMS;
     bool mInitialState;
@@ -35,26 +35,41 @@ public:
 
 };
 
+#ifdef SCHEDULER_REPORT_STACK_USAGE
+class ThreadReport : public Thread<128> {
+public:
+    virtual void run() {
+	while (true) {
+	    sched.reportStackUsage();
+	    sched.sleep(5000);
+	}
+    }
+};
+#endif
+
 BlinkyThread pin3(3, 1000, false);
 BlinkyThread pin4(4, 500, true);
+#ifdef SCHEDULER_REPORT_STACK_USAGE
+ThreadReport report;
+#endif
 
-static ThreadBase* all_threads[] = { &pin3, &pin4 };
+static ThreadBase* all_threads[] = { &pin3, &pin4,
+#ifdef SCHEDULER_REPORT_STACK_USAGE
+				     &report
+#endif
+};
 
 void setup() {
+#ifdef SCHEDULER_REPORT_STACK_USAGE
+    Serial.begin(57600);
+#endif
+
     pin3.init();
     pin4.init();
-    sched.init(all_threads, 2);
+    sched.init(all_threads, sizeof(all_threads) / sizeof(*all_threads));
 }
 
 void loop() {
     sched.run();
 }
 
-// pretend to be wiring
-int main() {
-    init(); // wiring init
-    setup();
-    while (true) {
-	loop();
-    }
-}
