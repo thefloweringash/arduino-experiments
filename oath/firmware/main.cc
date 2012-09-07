@@ -216,6 +216,7 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 		case OATH_RQ_SET_KEY: {
 			// expect a read of specified length
 			gReadTotalLen = rq->wLength.word;
+			gReadOffset = 0;
 			return 0xff;
 		}
 		}
