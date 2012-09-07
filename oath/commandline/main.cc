@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
+#include <sys/time.h>
 
 #include <initializer_list>
 
@@ -58,6 +59,14 @@ int main(int argc, char **argv) {
 		printf("Generating code with counter %i\n", counter);
 		usb_control_msg(h, USB_TYPE_VENDOR | USB_RECIP_DEVICE | USB_ENDPOINT_IN,
 		                OATH_RQ_TYPE_CODE, (counter >> 16), (counter & 0xffff), NULL, 0, 5000);
+	}
+	else if (strcmp(action, "settime") == 0) {
+		timeval time;
+		gettimeofday(&time, NULL);
+		uint32_t time32 = time.tv_sec;
+		printf("Setting time to %i\n", time32);
+		usb_control_msg(h, USB_TYPE_VENDOR | USB_RECIP_DEVICE | USB_ENDPOINT_IN,
+		                OATH_RQ_SET_TIME, (time32 >> 16), (time32 & 0xffff), NULL, 0, 5000);
 	}
 	else {
 		fprintf(stderr, "No command!\n");

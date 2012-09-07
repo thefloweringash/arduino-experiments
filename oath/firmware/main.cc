@@ -16,6 +16,11 @@ extern "C" {
 
 #include "requests.h"
 
+#define BUTTON_INPUT PINB
+#define BUTTON_DDR DDRB
+#define BUTTON_OUTPUT PORTB
+#define BUTTON_BIT 4
+
 uint8_t secret[64] EEMEM;
 
 // Default keyboard copied from usb.org's HID Descriptor tool, minus
@@ -125,6 +130,15 @@ uint8_t gCodeLen EEMEM;
 uint16_t gReadTotalLen;
 uint16_t gReadOffset;
 
+uint8_t gButtonState;
+bool gButtonDown;
+
+// gUnixTime is written to in TIMER0_OVF, and from the main
+// loop. Since this can (only) result in concurrent access when timer0
+// overflows, make sure that all accesses from the main loop are done
+// with interrupts disabled.
+volatile uint32_t gUnixTime;
+
 static uint32_t generateCode(uint32_t counter) {
 	sha1_state state;
 	{
@@ -219,6 +233,14 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 			gReadOffset = 0;
 			return 0xff;
 		}
+
+		case OATH_RQ_SET_TIME: {
+			uint8_t oldSREG = SREG;
+			cli();
+			gUnixTime = (((uint32_t) rq->wValue.word) << 16) | rq->wIndex.word;
+			SREG = oldSREG;
+			return 0;
+		}
 		}
 	}
 }
@@ -242,10 +264,29 @@ uchar usbFunctionWrite(uchar *data, uchar len) {
 	}
 }
 
+ISR(TIMER0_OVF_vect, ISR_NOBLOCK) {
+	static_assert(F_CPU == 16500000,
+	              "Timer overflow constant matches F_CPU value");
+	// 16.5mhz / 1024 / 256 = 62.9hz
+	//overflow is ~63 times per second.
+	static uint8_t counter = 0;
+	if (++counter == 63) {
+		counter = 0;
+		gUnixTime++;
+	}
+}
+
 int __attribute__((noreturn)) main() {
 	wdt_enable(WDTO_1S);
 
 	gSender.init();
+
+	// pin is input by default, engage pullup
+	BUTTON_OUTPUT |= _BV(BUTTON_BIT);
+
+	// Prescaler = 1024, enable interrupt
+	TCCR0B |= _BV(CS02) | _BV(CS00);
+	TIMSK |= _BV(TOIE0);
 
 	usbInit();
 
@@ -266,6 +307,22 @@ int __attribute__((noreturn)) main() {
 
 		if (usbInterruptIsReady()) {
 			gSender.haveInterrupt();
+		}
+
+		gButtonState = (gButtonState << 1) | !!(BUTTON_INPUT & _BV(BUTTON_BIT));
+		if (gButtonState == 0xff && gButtonDown) {
+			gButtonDown = false;
+		}
+		else if (gButtonState == 0x00 && !gButtonDown) {
+			gButtonDown = true;
+
+			uint8_t oldSREG = SREG;
+			cli();
+			uint32_t time = gUnixTime;
+			SREG = oldSREG;
+
+			gSender.sendInteger(generateCode(time / 30),
+			                    eeprom_read_byte(&gCodeLen));
 		}
 	}
 }
