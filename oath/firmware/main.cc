@@ -94,7 +94,7 @@ public:
 
 	unsigned char* stepReport() {
 		if (mStringOffset == mStringLen)
-			return false;
+			return NULL;
 
 		if (mReport.keys[0]) {
 			mReport.keys[0] = 0;
@@ -245,6 +245,8 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 		}
 		}
 	}
+
+	return 0;
 }
 
 uchar usbFunctionWrite(uchar *data, uchar len) {

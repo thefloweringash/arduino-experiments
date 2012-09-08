@@ -29,7 +29,7 @@ class ThreadBase {
 
 	State state;
 	union {
-		long sleepEndMillis;
+		unsigned long sleepEndMillis;
 	} stateData;
 
 	jmp_buf jmpBuf;

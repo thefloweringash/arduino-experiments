@@ -4,17 +4,16 @@
 
 #include <sha1.h>
 
-#define INLINE __attribute__((always_inline))
+#define INLINE inline __attribute__((always_inline))
 
-uint32_t rotateL(uint32_t x, uint8_t off) INLINE;
-uint32_t rotateL(uint32_t x, uint8_t off)
+uint32_t INLINE rotateL(uint32_t x, uint8_t off)
 {
 	return (x << off) | (x >> (32 - off));
 }
 
 void sha1_block::apply_xor(uint8_t xorConstant) {
 	uint8_t *data8 = reinterpret_cast<uint8_t*>(&data[0]);
-	for (int i = 0; i < sizeof(data); i++) {
+	for (uint8_t i = 0; i < sizeof(data); i++) {
 		data8[i] ^= xorConstant;
 	}
 }

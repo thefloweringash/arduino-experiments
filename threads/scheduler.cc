@@ -13,24 +13,30 @@ bool Scheduler::isRunnable(ThreadBase& t) {
 		return millis() >= t.stateData.sleepEndMillis;
 	case ThreadBase::BLOCKED:
 		return false;
+	case ThreadBase::READY:
+		return true;
+	default:
+		return false;
 	}
 }
 
 void Scheduler::run() {
-	uint8_t currentThread = mCurrentThread;
-	while (!isRunnable(*mThreads[currentThread])) {
-		currentThread = (currentThread + 1) % mThreadsCount;
+	{
+		uint8_t currentThread = mCurrentThread;
+		while (!isRunnable(*mThreads[currentThread])) {
+			currentThread = (currentThread + 1) % mThreadsCount;
 
-		if (currentThread == mCurrentThread)
-			return;
+			if (currentThread == mCurrentThread)
+				return;
+		}
+		mCurrentThread = currentThread;
 	}
 
-	mCurrentThread = currentThread;
 
-	ThreadBase& thread = *mThreads[currentThread];
+	ThreadBase& thread = *mThreads[mCurrentThread];
 
 	if (thread.state == ThreadBase::NEW) {
-		setupThread(thread, currentThread);
+		setupThread(thread, mCurrentThread);
 		thread.state = ThreadBase::READY;
 	}
 	else if (thread.state == ThreadBase::SLEEPING) {
@@ -38,7 +44,7 @@ void Scheduler::run() {
 	}
 
 	if (setjmp(mSchedulerJmpbuf) == 0) {
-		longjmp(thread.jmpBuf, currentThread);
+		longjmp(thread.jmpBuf, mCurrentThread);
 	}
 	else {
 		mCurrentThread = (mCurrentThread + 1) % mThreadsCount;
