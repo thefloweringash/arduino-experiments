@@ -7,6 +7,11 @@
 #include <avr/eeprom.h>
 #include <util/delay.h>
 
+#include "cpp-prelude.h"
+#include "cpp-prelude/digitalpin.h"
+#include "cpp-prelude/eeprom.h"
+#include "cpp-prelude/interrupt.h"
+#include "cpp-prelude/debouncer.h"
 
 extern "C" {
 #include <usbdrv.h>
@@ -16,10 +21,7 @@ extern "C" {
 
 #include "requests.h"
 
-#define BUTTON_INPUT PINB
-#define BUTTON_DDR DDRB
-#define BUTTON_OUTPUT PORTB
-#define BUTTON_BIT 4
+using ButtonPin_t = DigitalIOPin<PINB_t, PORTB_t, DDRB_t, 4>;
 
 uint8_t secret[64] EEMEM;
 
@@ -125,13 +127,12 @@ public:
 // Global state
 // ----------
 StringSender<11> gSender;
-uint8_t gCodeLen EEMEM;
+AutoEEMem<uint8_t> gCodeLen EEMEM;
 
 uint16_t gReadTotalLen;
 uint16_t gReadOffset;
 
-uint8_t gButtonState;
-bool gButtonDown;
+Debouncer<uint8_t, ButtonPin_t> gButton;
 
 // gUnixTime is written to in TIMER0_OVF, and from the main
 // loop. Since this can (only) result in concurrent access when timer0
@@ -213,17 +214,16 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 			return 4;
 
 		case OATH_RQ_TYPE_CODE: {
-			uint32_t counter = (((uint32_t) rq->wValue.word) << 16) | rq->wIndex.word;
+			uint32_t counter =
+			    (((uint32_t) rq->wValue.word) << 16)
+			    | rq->wIndex.word;
 			uint32_t code = generateCode(counter);
-			gSender.sendInteger(code, eeprom_read_byte(&gCodeLen));
+			gSender.sendInteger(code, gCodeLen);
 			return 0;
 		}
 
 		case OATH_RQ_SET_LENGTH: {
-			uint8_t len = rq->wValue.word;
-			if (eeprom_read_byte(&gCodeLen) != len) {
-				eeprom_write_byte(&gCodeLen, len);
-			}
+			gCodeLen = rq->wValue.word;
 			return 0;
 		}
 
@@ -235,10 +235,12 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 		}
 
 		case OATH_RQ_SET_TIME: {
-			uint8_t oldSREG = SREG;
-			cli();
-			gUnixTime = (((uint32_t) rq->wValue.word) << 16) | rq->wIndex.word;
-			SREG = oldSREG;
+			{
+				AutoDisableInterrupts _;
+				gUnixTime =
+				    (((uint32_t) rq->wValue.word) << 16)
+				    | rq->wIndex.word;
+			}
 			return 0;
 		}
 		}
@@ -282,7 +284,7 @@ int __attribute__((noreturn)) main() {
 	gSender.init();
 
 	// pin is input by default, engage pullup
-	BUTTON_OUTPUT |= _BV(BUTTON_BIT);
+	ButtonPin_t::set();
 
 	// Prescaler = 1024, enable interrupt
 	TCCR0B |= _BV(CS02) | _BV(CS00);
@@ -309,20 +311,15 @@ int __attribute__((noreturn)) main() {
 			gSender.haveInterrupt();
 		}
 
-		gButtonState = (gButtonState << 1) | !!(BUTTON_INPUT & _BV(BUTTON_BIT));
-		if (gButtonState == 0xff && gButtonDown) {
-			gButtonDown = false;
-		}
-		else if (gButtonState == 0x00 && !gButtonDown) {
-			gButtonDown = true;
-
-			uint8_t oldSREG = SREG;
-			cli();
-			uint32_t time = gUnixTime;
-			SREG = oldSREG;
+		if (gButton.step() == gButton.Falling) {
+			uint32_t time;
+			{
+				AutoDisableInterrupts _;
+				time = gUnixTime;
+			}
 
 			gSender.sendInteger(generateCode(time / 30),
-			                    eeprom_read_byte(&gCodeLen));
+			                    gCodeLen);
 		}
 	}
 }

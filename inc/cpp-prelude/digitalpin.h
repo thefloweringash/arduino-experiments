@@ -23,4 +23,14 @@ public:
   }
 };
 
+template <typename i_reg_t,
+          typename o_reg_t,
+          typename ddr_reg_t,
+          unsigned char bit>
+class DigitalIOPin : public DigitalPin<o_reg_t, ddr_reg_t, bit>  {
+
+public:
+	static inline bool get() { return !!i_reg_t::template get_bit<bit>(); }
+};
+
 #endif

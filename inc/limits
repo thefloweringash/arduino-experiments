@@ -1,0 +1,26 @@
+#ifndef CPP_PRELUDE_LIMITS
+#define CPP_PRELUDE_LIMITS
+
+namespace std {
+
+template <typename T>
+class numeric_limits {
+public:
+	static T min() throw();
+	static T max() throw();
+};
+
+template <>
+class numeric_limits<uint8_t> {
+public:
+	constexpr static uint8_t min() throw() {
+		return 0;
+	}
+	constexpr static uint8_t max() throw() {
+		return 0xff;
+	}
+};
+
+}
+
+#endif
