@@ -8,12 +8,12 @@ LOCAL_SRCS := main.cc sha1.cc calibration.c \
 NO_CORE=1
 # EXTRA_CORE_SRCS := wiring.c wiring_digital.c
 
-TARGET = threads
+TARGET = oath
 MCU := attiny85
 F_CPU = 16500000
 
 FUSE_L  := 0xe1
-FUSE_H  := 0xdd
+FUSE_H  := 0xd5
 
 AVRDUDE_OPTS := -c usbasp -p $(MCU)
 
