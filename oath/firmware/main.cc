@@ -254,12 +254,12 @@ uchar usbFunctionWrite(uchar *data, uchar len) {
 		return -1; // bounds check failed, results in STALL
 
 	// copy in data
-	eeprom_write_block(data, &secret[gReadOffset], len);
+	eeprom_update_block(data, &secret[gReadOffset], len);
 	gReadOffset += len;
 	if (gReadOffset == gReadTotalLen) {
 		// request finished, zero pad the rest
 		for (uint16_t off = gReadOffset; off < sizeof(secret); off++) {
-			eeprom_write_byte(&secret[off], 0);
+			eeprom_update_byte(&secret[off], 0);
 		}
 		return 1;
 	}
