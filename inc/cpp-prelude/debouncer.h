@@ -12,7 +12,7 @@ class Debouncer {
 public:
 	enum Edge {
 		None = 0, Falling = 1, Rising = 2
-	};
+	}  __attribute__((packed));
 
 	Edge step() {
 		constexpr T allOn = std::numeric_limits<T>::max();
