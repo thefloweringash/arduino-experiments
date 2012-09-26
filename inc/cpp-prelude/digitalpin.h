@@ -13,6 +13,8 @@ public:
   static inline void set()      { o_reg_t::template set_bit<bit>(); }
   static inline void clear()    { o_reg_t::template clear_bit<bit>(); }
 
+  static inline void invert()   { o_reg_t::set(o_reg_t::get() ^ (1 << bit)); }
+
   static inline void set(bool value) {
     if (value) {
       set();
