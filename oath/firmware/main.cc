@@ -21,7 +21,8 @@ extern "C" {
 
 #include "requests.h"
 
-using ButtonPin_t = DigitalIOPin<PINB_t, PORTB_t, DDRB_t, 4>;
+using ButtonPin_t = DigitalIOPin<PINB_t, PORTB_t, DDRB_t, PORTB4>;
+using LEDPin_t    = DigitalIOPin<PIND_t, PORTD_t, DDRD_t, PORTD7>;
 
 uint8_t secret[64] EEMEM;
 
@@ -132,7 +133,12 @@ AutoEEMem<uint8_t> gCodeLen EEMEM;
 uint16_t gReadTotalLen;
 uint16_t gReadOffset;
 
-Debouncer<uint8_t, ButtonPin_t> gButton;
+
+struct {
+	uint32_t downTime;
+	Debouncer<uint8_t, ButtonPin_t> debouncer;
+	typedef ButtonPin_t pin;
+} gButton;
 
 // gUnixTime is written to in TIMER0_OVF, and from the main
 // loop. Since this can (only) result in concurrent access when timer0
@@ -183,6 +189,7 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 	usbRequest_t *rq = reinterpret_cast<usbRequest_t *>(data);
 
 	static uint8_t idleRate = 0;
+	static uint8_t dataBuffer[4];
 
 	if((rq->bmRequestType & USBRQ_TYPE_MASK) == USBRQ_TYPE_CLASS){
 		switch (rq->bRequest) {
@@ -205,7 +212,6 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 	else {
 		switch (rq->bRequest) {
 		case OATH_RQ_ECHO:
-			static uint8_t dataBuffer[4];
 			dataBuffer[0] = rq->wValue.bytes[0];
 			dataBuffer[1] = rq->wValue.bytes[1];
 			dataBuffer[2] = rq->wIndex.bytes[0];
@@ -240,8 +246,18 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 				gUnixTime =
 				    (((uint32_t) rq->wValue.word) << 16)
 				    | rq->wIndex.word;
+				TCNT2 = 0;
 			}
 			return 0;
+		}
+		case OATH_RQ_GET_TIME: {
+			{
+				AutoDisableInterrupts _;
+				uint32_t time = gUnixTime;
+				memcpy(dataBuffer, &time, sizeof(time));
+			}
+			usbMsgPtr = dataBuffer;
+			return sizeof(gUnixTime);
 		}
 		}
 	}
@@ -268,29 +284,37 @@ uchar usbFunctionWrite(uchar *data, uchar len) {
 	}
 }
 
-ISR(TIMER0_OVF_vect, ISR_NOBLOCK) {
-	static_assert(F_CPU == 16500000,
-	              "Timer overflow constant matches F_CPU value");
-	// 16.5mhz / 1024 / 256 = 62.9hz
-	//overflow is ~63 times per second.
-	static uint8_t counter = 0;
-	if (++counter == 63) {
-		counter = 0;
-		gUnixTime++;
-	}
+ISR(TIMER2_OVF_vect, ISR_NOBLOCK) {
+	// ledval = !ledval;
+	LEDPin_t::invert();
+	gUnixTime++;
 }
 
 int __attribute__((noreturn)) main() {
+	// turn off features that are never used
+	ACSR |= _BV(ACD); // disable analog comparator
+	ADCSRA &= ~_BV(ADEN); // disable adc
+
 	wdt_enable(WDTO_1S);
 
 	gSender.init();
 
-	// pin is input by default, engage pullup
-	ButtonPin_t::set();
+	LEDPin_t::setDDR();
 
-	// Prescaler = 1024, enable interrupt
-	TCCR0B |= _BV(CS02) | _BV(CS00);
-	TIMSK |= _BV(TOIE0);
+	LEDPin_t::set();
+
+	ASSR |= _BV(AS2); // set timer2 to async
+	while ((ASSR & 0xf) != _BV(AS2)) {} // wait for async to start
+
+	LEDPin_t::invert();
+
+	// timer ticks per second (32768 / 128 = 256) will overflow an
+	// 8-bit timer once per second.
+	TCCR2 = _BV(CS22) | _BV(CS20); // prescaler = 128
+	TIMSK |= _BV(TOIE2); // enable overflow
+
+	// pin is input by default, engage pullup
+	decltype(gButton)::pin::set();
 
 	usbInit();
 
@@ -313,7 +337,8 @@ int __attribute__((noreturn)) main() {
 			gSender.haveInterrupt();
 		}
 
-		if (gButton.step() == gButton.Falling) {
+		decltype(gButton.debouncer)::Edge edge = gButton.debouncer.step();
+		if (edge == gButton.debouncer.Rising) {
 			uint32_t time;
 			{
 				AutoDisableInterrupts _;
@@ -322,6 +347,17 @@ int __attribute__((noreturn)) main() {
 
 			gSender.sendInteger(generateCode(time / 30),
 			                    gCodeLen);
+			gButton.downTime = 0;
+		}
+		else if (edge == gButton.debouncer.Falling) {
+			gButton.downTime = gUnixTime;
+		}
+		if (gButton.downTime) {
+			if (gUnixTime - gButton.downTime > 3) {
+				TIMSK &= ~_BV(TOIE2);
+				constexpr void *bootladerAddress = (void*) (0x1c00 << 1);
+				((void(*)()) bootladerAddress)();
+			}
 		}
 	}
 }

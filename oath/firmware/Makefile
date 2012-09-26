@@ -9,13 +9,13 @@ NO_CORE=1
 # EXTRA_CORE_SRCS := wiring.c wiring_digital.c
 
 TARGET = oath
-MCU := attiny85
-F_CPU = 16500000
+MCU := atmega16a
+F_CPU = 12000000
 
-FUSE_L  := 0xe1
-FUSE_H  := 0xd5
+FUSE_L  := 0xdf
+FUSE_H  := 0xc1
 
-AVRDUDE_OPTS := -c usbasp -p $(MCU)
+AVRDUDE_OPTS := -c usbasp -p atmega16
 
 CFLAGS := -Iusbdrv
 CXXFLAGS := -Iusbdrv
