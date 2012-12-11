@@ -7,3 +7,6 @@
 [submodule "libs/SerialCommandProcessor"]
 	path = libs/SerialCommandProcessor
 	url = git://github.com/thefloweringash/arduino-SerialCommandProcessor
+[submodule "libs/v-usb"]
+	path = libs/v-usb
+	url = git://github.com/obdev/v-usb
